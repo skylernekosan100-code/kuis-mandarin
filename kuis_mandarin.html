@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Mandarin 28 Kosakata - Auto Randomizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .hanzi-text { font-family: 'Noto Sans SC', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-xl w-full bg-slate-800 rounded-2xl shadow-2xl p-6 border border-slate-700">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
+            <div>
+                <h1 class="text-xl font-bold text-red-400">Kuis Mandarin A1</h1>
+                <p class="text-xs text-slate-400">Pertemuan 4 (28 Kosakata)</p>
+            </div>
+            <div id="progress" class="bg-slate-700 px-3 py-1 rounded-full text-xs text-amber-400 font-semibold">
+                Soal 1 / 28
+            </div>
+        </div>
+
+        <!-- Quiz Container -->
+        <div id="quiz-container">
+            <!-- Question Box -->
+            <div class="text-center py-8 bg-slate-900/60 rounded-xl mb-6 border border-slate-700/50">
+                <span class="text-xs text-slate-400 block mb-2">Apa arti dari karakter Hanzi berikut?</span>
+                <h2 id="hanzi-question" class="hanzi-text text-5xl font-bold text-amber-300 tracking-wider"></h2>
+            </div>
+
+            <!-- Answer Options -->
+            <div id="options-grid" class="grid grid-cols-1 gap-3 mb-6"></div>
+
+            <!-- Feedback Card -->
+            <div id="feedback-card" class="hidden p-4 rounded-xl mb-6 transition-all duration-300">
+                <div id="feedback-status" class="font-bold text-sm mb-1"></div>
+                <div class="text-sm space-y-1">
+                    <p id="feedback-pinyin" class="text-amber-300 font-semibold"></p>
+                    <p id="feedback-meaning" class="text-slate-200"></p>
+                    <p id="feedback-example" class="text-xs text-slate-400 italic pt-1 border-t border-slate-700/50 mt-2"></p>
+                </div>
+            </div>
+
+            <!-- Next Button -->
+            <button id="next-btn" onclick="nextQuestion()" class="hidden w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl shadow-lg transition">
+                Soal Berikutnya →
+            </button>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden text-center py-6">
+            <h2 class="text-2xl font-bold text-white mb-2">Kuis Selesai! 🎉</h2>
+            <p class="text-slate-400 mb-6">Berikut adalah hasil latihan daya ingat Hanzi kamu:</p>
+            
+            <div class="bg-slate-900/80 p-6 rounded-2xl mb-6 inline-block w-full border border-slate-700">
+                <div class="text-4xl font-extrabold text-amber-400 mb-1" id="final-score">0 / 28</div>
+                <div class="text-xs text-slate-400 uppercase tracking-wider" id="score-percentage">0% Akurasi</div>
+            </div>
+
+            <button onclick="startQuiz()" class="w-full bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold py-3 rounded-xl shadow-xl transition flex items-center justify-center gap-2">
+                🔄 Ulangi Kuis (Acak Soal Baru)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const vocabularyData = [
+            { hanzi: "几", pinyin: "jǐ", mean: "Berapa", example: "几点? (jǐ diǎn?) - Jam berapa?" },
+            { hanzi: "点", pinyin: "diǎn", mean: "Pukul / jam", example: "九点 (jiǔ diǎn) - Pukul 9" },
+            { hanzi: "现在", pinyin: "xiànzài", mean: "Sekarang", example: "现在几点? (xiànzài jǐ diǎn?) - Sekarang jam berapa?" },
+            { hanzi: "去", pinyin: "qù", mean: "Pergi", example: "去学校 (qù xuéxiào) - Pergi ke sekolah" },
+            { hanzi: "学校", pinyin: "xuéxiào", mean: "Sekolah", example: "去学校 (qù xuéxiào) - Pergi ke sekolah" },
+            { hanzi: "妈妈", pinyin: "māma", mean: "Ibu / mama", example: "妈妈去学校 (māma qù xuéxiào) - Mama pergi ke sekolah" },
+            { hanzi: "爸爸", pinyin: "bàba", mean: "Ayah / papa", example: "爸爸回家 (bàba huí jiā) - Papa pulang ke rumah" },
+            { hanzi: "孩子", pinyin: "háizi", mean: "Anak", example: "孩子上课 (háizi shàngkè) - Anak mengikuti kelas" },
+            { hanzi: "今天", pinyin: "jīntiān", mean: "Hari ini", example: "今天星期几? (jīntiān xīngqī jǐ?) - Hari ini hari apa?" },
+            { hanzi: "星期", pinyin: "xīngqī", mean: "Pekan / hari pekan", example: "星期一 (xīngqī yī) - Hari Senin" },
+            { hanzi: "月", pinyin: "yuè", mean: "Bulan", example: "五月 (wǔ yuè) - Bulan Mei" },
+            { hanzi: "号", pinyin: "hào", mean: "Tanggal (percakapan)", example: "十七号 (shíqī hào) - Tanggal 17" },
+            { hanzi: "日", pinyin: "rì", mean: "Hari/tanggal (formal)", example: "五月十七日 (wǔ yuè shíqī rì) - Tanggal 17 Mei" },
+            { hanzi: "星期天", pinyin: "xīngqītiān", mean: "Hari Minggu", example: "今天星期天 (jīntiān xīngqītiān) - Hari ini hari Minggu" },
+            { hanzi: "早上", pinyin: "zǎoshang", mean: "Pagi", example: "早上九点 (zǎoshang jiǔ diǎn) - Jam 9 pagi" },
+            { hanzi: "有", pinyin: "yǒu", mean: "Ada / mempunyai", example: "有课 (yǒu kè) - Ada kelas" },
+            { hanzi: "没", pinyin: "méi", mean: "Tidak (dalam 没有)", example: "没有课 (méi yǒu kè) - Tidak ada kelas" },
+            { hanzi: "课", pinyin: "kè", mean: "Kelas / pelajaran", example: "早上有课 (zǎoshang yǒu kè) - Pagi ada kelas" },
+            { hanzi: "图书馆", pinyin: "túshūguǎn", mean: "Perpustakaan", example: "去图书馆 (qù túshūguǎn) - Pergi ke perpustakaan" },
+            { hanzi: "中午", pinyin: "zhōngwǔ", mean: "Tengah hari / siang", example: "中午回家 (zhōngwǔ huí jiā) - Siang pulang ke rumah" },
+            { hanzi: "回", pinyin: "huí", mean: "Kembali / pulang", example: "回家 (huí jiā) - Pulang ke rumah" },
+            { hanzi: "家", pinyin: "jiā", mean: "Rumah", example: "回家 (huí jiā) - Pulang ke rumah" },
+            { hanzi: "家人", pinyin: "jiārén", mean: "Anggota keluarga", example: "我和家人 (wǒ hé jiārén) - Saya dan keluarga" },
+            { hanzi: "下午", pinyin: "xiàwǔ", mean: "Setelah siang / sore", example: "下午四点 (xiàwǔ sì diǎn) - Jam 4 sore" },
+            { hanzi: "上午", pinyin: "shàngwǔ", mean: "Pagi (sebelum siang)", example: "上午十点 (shàngwǔ shí diǎn) - Jam 10 pagi" },
+            { hanzi: "下课", pinyin: "xiàkè", mean: "Kelas selesai", example: "四点四十分下课 (sì diǎn sìshí fēn xiàkè) - Kelas selesai jam 16.40" },
+            { hanzi: "上课", pinyin: "shàngkè", mean: "Mengikuti / mulai kelas", example: "八点上课 (bā diǎn shàngkè) - Mulai kelas jam 8" },
+            { hanzi: "分", pinyin: "fēn", mean: "Menit", example: "二十分 (èrshí fēn) - 20 menit" }
+        ];
+
+        let shuffledQuestions = [];
+        let currentIdx = 0;
+        let score = 0;
+        let answered = false;
+
+        function shuffle(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function startQuiz() {
+            shuffledQuestions = shuffle(vocabularyData);
+            currentIdx = 0;
+            score = 0;
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            answered = false;
+            const q = shuffledQuestions[currentIdx];
+            
+            document.getElementById('progress').innerText = `Soal ${currentIdx + 1} / ${shuffledQuestions.length}`;
+            document.getElementById('hanzi-question').innerText = q.hanzi;
+            
+            document.getElementById('feedback-card').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+
+            let options = [q];
+            let otherItems = vocabularyData.filter(item => item.hanzi !== q.hanzi);
+            let randomDistractors = shuffle(otherItems).slice(0, 3);
+            options = shuffle([...options, ...randomDistractors]);
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            
+            options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 bg-slate-700/50 hover:bg-slate-700 rounded-xl font-medium border border-slate-600/50 transition-all text-slate-100 flex items-center justify-between";
+                btn.innerText = opt.mean;
+                btn.onclick = () => checkAnswer(opt, q, btn, grid);
+                grid.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selected, correct, selectedBtn, grid) {
+            if (answered) return;
+            answered = true;
+
+            const isCorrect = selected.hanzi === correct.hanzi;
+            if (isCorrect) score++;
+
+            Array.from(grid.children).forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-70');
+                if (btn.innerText === correct.mean) {
+                    btn.classList.remove('bg-slate-700/50', 'border-slate-600/50', 'opacity-70');
+                    btn.classList.add('bg-emerald-900/60', 'border-emerald-500', 'text-emerald-200', 'font-bold');
+                }
+            });
+
+            if (!isCorrect) {
+                selectedBtn.classList.remove('bg-slate-700/50', 'border-slate-600/50', 'opacity-70');
+                selectedBtn.classList.add('bg-rose-900/60', 'border-rose-500', 'text-rose-200');
+            }
+
+            const feedbackCard = document.getElementById('feedback-card');
+            const feedbackStatus = document.getElementById('feedback-status');
+            
+            feedbackCard.classList.remove('hidden', 'bg-emerald-950/50', 'border-emerald-700', 'bg-rose-950/50', 'border-rose-700');
+            
+            if (isCorrect) {
+                feedbackCard.classList.add('bg-emerald-950/50', 'border', 'border-emerald-700');
+                feedbackStatus.className = "text-emerald-400 font-bold mb-1";
+                feedbackStatus.innerText = "✓ Benar!";
+            } else {
+                feedbackCard.classList.add('bg-rose-950/50', 'border', 'border-rose-700');
+                feedbackStatus.className = "text-rose-400 font-bold mb-1";
+                feedbackStatus.innerText = `✗ Salah (Jawaban Benar: ${correct.mean})`;
+            }
+
+            document.getElementById('feedback-pinyin').innerText = `Pinyin: ${correct.pinyin}`;
+            document.getElementById('feedback-meaning').innerText = `Arti: ${correct.mean}`;
+            document.getElementById('feedback-example').innerText = `Contoh: ${correct.example}`;
+
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < shuffledQuestions.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            const pct = Math.round((score / vocabularyData.length) * 100);
+            document.getElementById('final-score').innerText = `${score} / ${vocabularyData.length}`;
+            document.getElementById('score-percentage').innerText = `${pct}% Akurasi Daya Ingat`;
+        }
+
+        startQuiz();
+    </script>
+</body>
+</html>
